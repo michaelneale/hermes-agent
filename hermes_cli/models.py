@@ -2546,8 +2546,8 @@ def _fetch_mesh_llm_context_lengths(mgmt_url: str) -> dict[str, int]:
         if resp.status_code != 200:
             return result
         data = resp.json()
-        # The management API returns an array of objects or an object with models
-        entries = data if isinstance(data, list) else data.get("models", [])
+        # The management API returns an array of objects or an object with mesh_models/models
+        entries = data if isinstance(data, list) else data.get("mesh_models", data.get("models", []))
         for entry in entries:
             if not isinstance(entry, dict):
                 continue
