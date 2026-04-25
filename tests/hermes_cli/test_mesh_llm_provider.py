@@ -31,11 +31,11 @@ class TestProviderRegistry:
         assert "MESH_LLM_API_KEY" in cfg.api_key_env_vars
 
     def test_mesh_llm_aliases(self):
-        from hermes_cli.auth import resolve_provider_name
+        from hermes_cli.auth import resolve_provider
 
-        assert resolve_provider_name("mesh-llm") == "mesh-llm"
-        assert resolve_provider_name("meshllm") == "mesh-llm"
-        assert resolve_provider_name("mesh_llm") == "mesh-llm"
+        assert resolve_provider("mesh-llm") == "mesh-llm"
+        assert resolve_provider("meshllm") == "mesh-llm"
+        assert resolve_provider("mesh_llm") == "mesh-llm"
 
 
 # ---------------------------------------------------------------------------

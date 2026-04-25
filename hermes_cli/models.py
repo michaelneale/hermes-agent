@@ -2521,6 +2521,8 @@ def _load_mesh_llm_cache(*, ignore_ttl: bool = False) -> Optional[dict]:
 def _save_mesh_llm_cache(models: list[str], context_lengths: Optional[dict] = None) -> None:
     """Persist Mesh-LLM model list to disk."""
     try:
+        from utils import atomic_json_write
+
         cache_path = _mesh_llm_cache_path()
         payload: dict = {"models": models, "cached_at": time.time()}
         if context_lengths:
