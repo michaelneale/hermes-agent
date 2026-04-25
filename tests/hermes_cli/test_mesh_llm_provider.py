@@ -194,3 +194,20 @@ class TestModelDiscovery:
 
         result = fetch_mesh_llm_models(force_refresh=True)
         assert result == ["stale-model"]
+
+
+class TestDefaultModel:
+    """Verify mesh-llm defaults to 'auto' when no model is specified."""
+
+    def test_default_model_is_auto(self):
+        from hermes_cli.models import get_default_model_for_provider
+
+        assert get_default_model_for_provider("mesh-llm") == "auto"
+
+    def test_other_providers_unaffected(self):
+        from hermes_cli.models import get_default_model_for_provider
+
+        # Other providers should still use their catalog, not "auto"
+        result = get_default_model_for_provider("nous")
+        assert result != "auto"
+        assert result != ""

@@ -822,6 +822,9 @@ def get_default_model_for_provider(provider: str) -> str:
     selected a model (e.g. ``hermes auth add openai-codex`` without
     ``hermes model``).
     """
+    # Mesh-LLM supports "auto" — lets the mesh pick the best available model
+    if provider == "mesh-llm":
+        return "auto"
     models = _PROVIDER_MODELS.get(provider, [])
     return models[0] if models else ""
 
