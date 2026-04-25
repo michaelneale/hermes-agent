@@ -348,6 +348,14 @@ PROVIDER_REGISTRY: Dict[str, ProviderConfig] = {
         api_key_env_vars=("OLLAMA_API_KEY",),
         base_url_env_var="OLLAMA_BASE_URL",
     ),
+    "mesh-llm": ProviderConfig(
+        id="mesh-llm",
+        name="Mesh-LLM",
+        auth_type="api_key",
+        inference_base_url="http://localhost:9337/v1",
+        api_key_env_vars=("MESH_LLM_API_KEY",),
+        base_url_env_var="MESH_LLM_BASE_URL",
+    ),
     "bedrock": ProviderConfig(
         id="bedrock",
         name="AWS Bedrock",
@@ -1116,6 +1124,7 @@ def resolve_provider(
         "ollama": "custom", "ollama_cloud": "ollama-cloud",
         "vllm": "custom", "llamacpp": "custom",
         "llama.cpp": "custom", "llama-cpp": "custom",
+        "mesh-llm": "mesh-llm", "meshllm": "mesh-llm", "mesh_llm": "mesh-llm",
     }
     normalized = _PROVIDER_ALIASES.get(normalized, normalized)
 

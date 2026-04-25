@@ -2480,6 +2480,144 @@ def fetch_ollama_cloud_models(
     return []
 
 
+# ---------------------------------------------------------------------------
+# Mesh-LLM — model discovery from local distributed inference mesh
+# ---------------------------------------------------------------------------
+
+_MESH_LLM_CACHE_TTL = 300  # 5 minutes (local service, cheap to re-probe)
+
+_MESH_LLM_DEFAULT_BASE_URL = "http://localhost:9337/v1"
+_MESH_LLM_DEFAULT_MGMT_PORT = 3131
+
+
+def _mesh_llm_cache_path() -> Path:
+    """Return the path for the Mesh-LLM model cache."""
+    from hermes_constants import get_hermes_home
+    return get_hermes_home() / "mesh_llm_models_cache.json"
+
+
+def _load_mesh_llm_cache(*, ignore_ttl: bool = False) -> Optional[dict]:
+    """Load cached Mesh-LLM models from disk."""
+    try:
+        cache_path = _mesh_llm_cache_path()
+        if not cache_path.exists():
+            return None
+        with open(cache_path, encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            return None
+        models = data.get("models")
+        if not (isinstance(models, list) and models):
+            return None
+        if not ignore_ttl:
+            cached_at = data.get("cached_at", 0)
+            if (time.time() - cached_at) > _MESH_LLM_CACHE_TTL:
+                return None
+        return data
+    except Exception:
+        return None
+
+
+def _save_mesh_llm_cache(models: list[str], context_lengths: Optional[dict] = None) -> None:
+    """Persist Mesh-LLM model list to disk."""
+    try:
+        cache_path = _mesh_llm_cache_path()
+        payload: dict = {"models": models, "cached_at": time.time()}
+        if context_lengths:
+            payload["context_lengths"] = context_lengths
+        atomic_json_write(cache_path, payload, indent=None)
+    except Exception:
+        pass
+
+
+def _fetch_mesh_llm_context_lengths(mgmt_url: str) -> dict[str, int]:
+    """Fetch real context lengths from the Mesh-LLM management API.
+
+    Calls GET <mgmt_url>/api/models and extracts context_length per model.
+    Returns a dict mapping model_id -> context_length.
+    """
+    import httpx as _httpx
+
+    result: dict[str, int] = {}
+    try:
+        resp = _httpx.get(f"{mgmt_url}/api/models", timeout=3.0)
+        if resp.status_code != 200:
+            return result
+        data = resp.json()
+        # The management API returns an array of objects or an object with models
+        entries = data if isinstance(data, list) else data.get("models", [])
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            name = entry.get("name") or entry.get("id", "")
+            ctx = entry.get("context_length") or entry.get("ctx_size", 0)
+            if name and ctx:
+                result[name] = int(ctx)
+    except Exception:
+        pass
+    return result
+
+
+def fetch_mesh_llm_models(
+    api_key: Optional[str] = None,
+    base_url: Optional[str] = None,
+    mgmt_port: Optional[int] = None,
+    *,
+    force_refresh: bool = False,
+) -> list[str]:
+    """Fetch models from a local Mesh-LLM instance.
+
+    Discovery:
+      1. Disk cache (if fresh, < 5 min, and not force_refresh)
+      2. Live ``/v1/models`` endpoint on the inference port (default 9337)
+      3. Management API on port 3131 for context lengths (best-effort)
+
+    Returns a list of model IDs (never None — empty list on total failure).
+    """
+    # 1. Check disk cache
+    if not force_refresh:
+        cached = _load_mesh_llm_cache()
+        if cached is not None:
+            return cached["models"]
+
+    # 2. Resolve connection details
+    if not base_url:
+        base_url = os.getenv("MESH_LLM_BASE_URL", "") or _MESH_LLM_DEFAULT_BASE_URL
+    if not api_key:
+        api_key = os.getenv("MESH_LLM_API_KEY", "")
+
+    # 3. Live API probe — uses OpenAI-compatible /v1/models
+    live_models = fetch_api_models(api_key or "no-key-needed", base_url, timeout=5.0)
+    if not live_models:
+        # Mesh-LLM may not require auth — try without key
+        live_models = fetch_api_models("no-key-needed", base_url, timeout=5.0)
+
+    if live_models:
+        # 4. Best-effort: fetch context lengths from management API
+        if mgmt_port is None:
+            mgmt_port = int(os.getenv("MESH_LLM_MGMT_PORT", str(_MESH_LLM_DEFAULT_MGMT_PORT)))
+        # Derive management URL from the base URL host
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(base_url)
+            mgmt_host = parsed.hostname or "localhost"
+            mgmt_scheme = parsed.scheme or "http"
+            mgmt_url = f"{mgmt_scheme}://{mgmt_host}:{mgmt_port}"
+        except Exception:
+            mgmt_url = f"http://localhost:{mgmt_port}"
+
+        ctx_lengths = _fetch_mesh_llm_context_lengths(mgmt_url)
+        _save_mesh_llm_cache(live_models, ctx_lengths or None)
+        return live_models
+
+    # Total failure — return stale cache if available
+    stale = _load_mesh_llm_cache(ignore_ttl=True)
+    if stale is not None:
+        return stale["models"]
+
+    return []
+
+
 def validate_requested_model(
     model_name: str,
     provider: Optional[str],

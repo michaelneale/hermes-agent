@@ -59,6 +59,7 @@ _PROVIDER_PREFIXES: frozenset[str] = frozenset({
     "ollama",
     "stepfun", "opencode", "zen", "go", "vercel", "kilo", "dashscope", "aliyun", "qwen",
     "mimo", "xiaomi-mimo",
+    "mesh-llm", "meshllm",
     "arcee-ai", "arceeai",
     "xai", "x-ai", "x.ai", "grok",
     "nvidia", "nim", "nvidia-nim", "nemotron",

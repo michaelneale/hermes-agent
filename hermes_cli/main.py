@@ -4109,6 +4109,15 @@ def _model_flow_api_key_provider(config, provider_id, current_model=""):
         )
         if model_list:
             print(f"  Found {len(model_list)} model(s) from Ollama Cloud")
+    elif provider_id == "mesh-llm":
+        from hermes_cli.models import fetch_mesh_llm_models
+
+        api_key_for_probe = existing_key or (get_env_value(key_env) if key_env else "")
+        model_list = fetch_mesh_llm_models(
+            api_key=api_key_for_probe, base_url=effective_base
+        )
+        if model_list:
+            print(f"  Found {len(model_list)} model(s) from Mesh-LLM")
     else:
         curated = _PROVIDER_MODELS.get(provider_id, [])
 

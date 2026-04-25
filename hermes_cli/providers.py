@@ -167,6 +167,12 @@ HERMES_OVERLAYS: Dict[str, HermesOverlay] = {
         transport="openai_chat",
         base_url_env_var="OLLAMA_BASE_URL",
     ),
+    "mesh-llm": HermesOverlay(
+        transport="openai_chat",
+        base_url_override="http://localhost:9337/v1",
+        base_url_env_var="MESH_LLM_BASE_URL",
+        extra_env_vars=("MESH_LLM_API_KEY",),
+    ),
 }
 
 
@@ -300,6 +306,10 @@ ALIASES: Dict[str, str] = {
     "llamacpp": "local",
     "llama.cpp": "local",
     "llama-cpp": "local",
+
+    # mesh-llm (distributed GPU inference)
+    "meshllm": "mesh-llm",
+    "mesh_llm": "mesh-llm",
 }
 
 
@@ -316,6 +326,7 @@ _LABEL_OVERRIDES: Dict[str, str] = {
     "local": "Local endpoint",
     "bedrock": "AWS Bedrock",
     "ollama-cloud": "Ollama Cloud",
+    "mesh-llm": "Mesh-LLM",
 }
 
 
